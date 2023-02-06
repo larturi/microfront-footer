@@ -1,6 +1,8 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Module Federation - Footer Component
 
-## Getting Started
+<https://www.npmjs.com/package/@module-federation/nextjs-mf/v/6.0.7>
+
+# Getting Started
 
 First, run the development server:
 
@@ -8,31 +10,140 @@ First, run the development server:
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# Pasos para integrar el componente Footer
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+### Instalar dependencias en package.json
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+```bash
+"dependencies": {
+    "@module-federation/nextjs-mf": "^6.0.4",
+    "webpack": "^5.75.0"
+}
+```
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+### Incluir el componente en next.config.js
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```bash
+require('@module-federation/nextjs-mf/src/include-defaults')
 
-## Learn More
+const { NextFederationPlugin } = require('@module-federation/nextjs-mf')
 
-To learn more about Next.js, take a look at the following resources:
+module.exports = {
+  webpack(config, options) {
+    const { isServer } = options
+    config.plugins.push(
+      new NextFederationPlugin({
+        name: 'next1',
+        filename: 'static/chunks/remoteEntry.js',
+        remotes: {
+          fe2: `fe2@http://localhost:3002/_next/static/${
+            isServer ? 'ssr' : 'chunks'
+          }/remoteEntry.js`,
+        },
+      })
+    )
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+    return config
+  },
+}
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### Declarar el componente en ts.d.ts
 
-## Deploy on Vercel
+```bash
+declare module 'fe2/footer'
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Usar el componente en pages/_app.tsx
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```bash
+import type { AppProps } from 'next/app'
+import dynamic from 'next/dynamic'
+import { ComponentType, Dispatch, ReactElement, SetStateAction, useState } from 'react'
+
+type IFooter = {
+  bgColor?: string
+  color?: string
+}
+
+const Footer: ComponentType<IFooter> = dynamic(() => import('fe2/footer'), { ssr: false })
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Footer bgColor='#0070F2' />
+    </>
+  )
+}
+
+export default MyApp
+```
+
+# Pasos para crear un nuevo componente
+
+### Instalar dependencias en package.json
+
+```bash
+"dependencies": {
+    "@module-federation/nextjs-mf": "^6.0.4",
+    "webpack": "^5.75.0"
+}
+```
+
+### Incluir el componente en next.config.js
+
+```bash
+const { NextFederationPlugin } = require('@module-federation/nextjs-mf')
+
+module.exports = {
+  webpack(config, options) {
+    config.plugins.push(
+      new NextFederationPlugin({
+        name: 'fe2',
+        filename: 'static/chunks/remoteEntry.js',
+        exposes: {
+          './footer': './src/components/Footer.tsx',
+          './section': './src/components/Section.jsx',
+        },
+        extraOptions: {
+          exposePages: true, 
+          enableImageLoaderFix: true,
+          enableUrlLoaderFix: true,
+          automaticAsyncBoundary: true,
+          skipSharingNextInternals: false,
+        },
+      })
+    )
+
+    return config
+  },
+}
+```
+
+### Crear el componente
+
+```bash
+import React from 'react'
+
+interface IFooter {
+  bgColor?: string
+  color?: string
+}
+
+const Footer = ({ bgColor = '#000', color = '#fff', setCount, count = 0 }: IFooter) => {
+  return (
+    <>
+      <div className='footer'>
+        <div className='section'>
+          <p>Remote Footer</p>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export default Footer
+
+```
